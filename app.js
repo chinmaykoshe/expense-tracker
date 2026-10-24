@@ -11,9 +11,9 @@ const DEFAULT_CATS = [
 const KEY = "chinmayDailyGridV4";
 const THEME_KEY = "chinmayAppTheme";
 
-// Default fallback configuration (overridden by config.js if present)
+// Default fallback configuration (loaded securely from window.APP_CONFIG or environment)
 const FALLBACK_CONFIG = {
-  FIREBASE_DATABASE_URL: "https://chat-app-31ca7-default-rtdb.firebaseio.com",
+  FIREBASE_DATABASE_URL: "",
   FIREBASE_NODE: "expenseTracker",
   DATABASE_SECRET: ""
 };
@@ -616,52 +616,15 @@ if (openBtn) openBtn.addEventListener('click', toggleSidebar);
 if (closeBtn) closeBtn.addEventListener('click', toggleSidebar);
 if (overlay) overlay.addEventListener('click', toggleSidebar);
 
-// Cloud Settings Modal
-const cloudModal = document.getElementById("cloudModal");
-const openCloudBtn = document.getElementById("cloudStatusBtn");
-const closeCloudModal = document.getElementById("closeCloudModal");
-const closeCloudModalBtn = document.getElementById("closeCloudModalBtn");
-const sbCloudSettings = document.getElementById("sb-cloudSettings");
-
-function openModal() {
-  const ep = getFirebaseEndpoint();
-  document.getElementById("cfgDbUrl").value = ep.baseUrl;
-  document.getElementById("cfgDbNode").value = ep.node;
-  document.getElementById("cfgDbSecret").value = ep.secret;
-  cloudModal.classList.add("active");
-}
-function closeModal() {
-  cloudModal.classList.remove("active");
-}
-
-if (openCloudBtn) openCloudBtn.addEventListener("click", openModal);
-if (sbCloudSettings) sbCloudSettings.addEventListener("click", () => { toggleSidebar(); openModal(); });
-if (closeCloudModal) closeCloudModal.addEventListener("click", closeModal);
-if (closeCloudModalBtn) closeCloudModalBtn.addEventListener("click", closeModal);
-if (cloudModal) cloudModal.addEventListener("click", e => { if (e.target === cloudModal) closeModal(); });
-
-const btnSaveCloudConfig = document.getElementById("btnSaveCloudConfig");
-if (btnSaveCloudConfig) {
-  btnSaveCloudConfig.addEventListener("click", () => {
-    const cfg = window.APP_CONFIG || FALLBACK_CONFIG;
-    let url = document.getElementById("cfgDbUrl").value.trim() || cfg.FIREBASE_DATABASE_URL;
-    let node = document.getElementById("cfgDbNode").value.trim() || cfg.FIREBASE_NODE;
-    let secret = document.getElementById("cfgDbSecret").value.trim();
-    localStorage.setItem("chinmayDbUrl", url);
-    localStorage.setItem("chinmayDbNode", node);
-    localStorage.setItem("chinmayDbSecret", secret);
-    closeModal();
-    showToast("Firebase settings updated");
-    fetchCloudData();
-    initRealtimeListener();
+// Cloud Status Button (Direct sync trigger, NO dialog box)
+const cloudStatusBtn = document.getElementById("cloudStatusBtn");
+if (cloudStatusBtn) {
+  cloudStatusBtn.addEventListener("click", async () => {
+    showToast("Syncing with cloud...");
+    await fetchCloudData(false);
+    await pushToCloud(true);
   });
 }
-
-const btnPushCloud = document.getElementById("btnPushCloud");
-if (btnPushCloud) btnPushCloud.addEventListener("click", async () => { await pushToCloud(true); });
-
-const btnPullCloud = document.getElementById("btnPullCloud");
-if (btnPullCloud) btnPullCloud.addEventListener("click", async () => { await fetchCloudData(false); });
 
 // Grid Events
 document.getElementById("grid").addEventListener("click", e => {
