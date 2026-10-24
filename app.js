@@ -11,13 +11,7 @@ const DEFAULT_CATS = [
 const KEY = "chinmayDailyGridV4";
 const THEME_KEY = "chinmayAppTheme";
 
-// Default fallback configuration (loaded securely from window.APP_CONFIG or environment)
-const FALLBACK_CONFIG = {
-  FIREBASE_DATABASE_URL: "",
-  FIREBASE_NODE: "expenseTracker",
-  DATABASE_SECRET: ""
-};
-
+// Application State & Visual Helpers
 let state = loadLocal();
 let currentWeekIndex = 0;
 let weeks = [];
@@ -89,24 +83,47 @@ function esc(s) {
 }
 
 // ============================================================
-// CONFIGURATION & FIREBASE REALTIME CLOUD INTEGRATION
+// CONFIGURATION & SECURE CLOUD INTEGRATION
 // ============================================================
+// Firebase Realtime Database prohibits '.', '$', '[', ']', '#', and '/' in object keys
+function encodeFirebaseKey(k) {
+  return String(k).replace(/[\.\$\[\]\#\/]/g, c => ({
+    '.': '%2E',
+    '$': '%24',
+    '[': '%5B',
+    ']': '%5D',
+    '#': '%23',
+    '/': '%2F'
+  }[c]));
+}
+
+function decodeFirebaseKey(k) {
+  return String(k).replace(/%2[EFef]|%24|%5[BbDd]|%23/g, match => {
+    switch (match.toUpperCase()) {
+      case '%2E': return '.';
+      case '%24': return '$';
+      case '%5B': return '[';
+      case '%5D': return ']';
+      case '%23': return '#';
+      case '%2F': return '/';
+      default: return match;
+    }
+  });
+}
+
 function getFirebaseEndpoint() {
-  const cfg = window.APP_CONFIG || FALLBACK_CONFIG;
-  let baseUrl = localStorage.getItem("chinmayDbUrl") || cfg.FIREBASE_DATABASE_URL || FALLBACK_CONFIG.FIREBASE_DATABASE_URL;
-  let node = localStorage.getItem("chinmayDbNode") || cfg.FIREBASE_NODE || FALLBACK_CONFIG.FIREBASE_NODE;
-  let secret = localStorage.getItem("chinmayDbSecret") || cfg.DATABASE_SECRET || "";
-  
-  baseUrl = baseUrl.trim().replace(/\/+$/, "");
-  node = node.trim().replace(/^\/+|\/+$/g, "");
-  let authParam = secret ? `?auth=${encodeURIComponent(secret.trim())}` : "";
+  const cfg = (typeof window !== 'undefined' && window.APP_CONFIG) ? window.APP_CONFIG : {};
+  let baseUrl = (cfg.FIREBASE_DATABASE_URL || "").trim().replace(/\/+$/, "");
+  let node = (cfg.FIREBASE_NODE || "expenseTracker").trim().replace(/^\/+|\/+$/g, "");
+  let secret = (cfg.DATABASE_SECRET || "").trim();
+  let authParam = secret ? `?auth=${encodeURIComponent(secret)}` : "";
   
   return {
     baseUrl,
     node,
     secret,
-    dataUrl: `${baseUrl}/${node}.json${authParam}`,
-    sseUrl: `${baseUrl}/${node}.json${authParam}`
+    dataUrl: baseUrl ? `${baseUrl}/${node}.json${authParam}` : "",
+    sseUrl: baseUrl ? `${baseUrl}/${node}.json${authParam}` : ""
   };
 }
 
@@ -120,13 +137,25 @@ function setCloudStatus(status, text) {
 
 // Push local state to Firebase Realtime Database
 async function pushToCloud(showNotification = false) {
-  setCloudStatus('syncing', 'Syncing...');
   const endpoint = getFirebaseEndpoint();
+  if (!endpoint.baseUrl) {
+    setCloudStatus('offline', 'Offline (Local Only)');
+    return;
+  }
+  setCloudStatus('syncing', 'Syncing...');
   try {
+    const safeEntries = {};
+    for (let k in state.entries) {
+      safeEntries[encodeFirebaseKey(k)] = state.entries[k];
+    }
+    const safeMomCells = {};
+    for (let k in state.momCells) {
+      safeMomCells[encodeFirebaseKey(k)] = state.momCells[k];
+    }
     const payload = {
       categories: state.categories,
-      entries: state.entries,
-      momCells: state.momCells,
+      entries: safeEntries,
+      momCells: safeMomCells,
       updatedAt: Date.now()
     };
     const res = await fetch(endpoint.dataUrl, {
@@ -137,14 +166,14 @@ async function pushToCloud(showNotification = false) {
 
     if (res.ok) {
       setCloudStatus('synced', 'Cloud Synced');
-      if (showNotification) showToast("Synced to Firebase Cloud!");
+      if (showNotification) showToast("Synced to Cloud!");
     } else if (res.status === 401 || res.status === 403) {
-      setCloudStatus('error_perm', 'Rules Locked (Click to Fix)');
+      setCloudStatus('error_perm', 'Cloud Sync Paused');
       if (sseSource) {
         try { sseSource.close(); } catch(e){}
         sseSource = null;
       }
-      showToast("Firebase 401: Check Rules in Firebase Console.");
+      showToast("Cloud sync paused: Check database rules.");
     } else {
       setCloudStatus('offline', 'Sync Error');
     }
@@ -156,16 +185,28 @@ async function pushToCloud(showNotification = false) {
 // Pull state from Firebase Realtime Database
 async function fetchCloudData(isBackground = false) {
   const endpoint = getFirebaseEndpoint();
+  if (!endpoint.baseUrl) {
+    setCloudStatus('offline', 'Offline (Local Only)');
+    return;
+  }
   if (!isBackground) setCloudStatus('syncing', 'Connecting...');
   try {
     const res = await fetch(endpoint.dataUrl);
     if (res.ok) {
       const data = await res.json();
       if (data && data.entries) {
+        const decodedEntries = {};
+        for (let k in data.entries) {
+          decodedEntries[decodeFirebaseKey(k)] = data.entries[k];
+        }
+        const decodedMomCells = {};
+        for (let k in (data.momCells || {})) {
+          decodedMomCells[decodeFirebaseKey(k)] = data.momCells[k];
+        }
         state = {
           categories: [...new Set([...DEFAULT_CATS, ...(data.categories || []), ...state.categories])],
-          entries: { ...state.entries, ...data.entries },
-          momCells: { ...state.momCells, ...(data.momCells || {}) }
+          entries: { ...state.entries, ...decodedEntries },
+          momCells: { ...state.momCells, ...decodedMomCells }
         };
         ensureEmptyCustomRow();
         saveLocal();
@@ -176,17 +217,16 @@ async function fetchCloudData(isBackground = false) {
         pushToCloud();
       }
     } else if (res.status === 401 || res.status === 403) {
-      setCloudStatus('error_perm', 'Rules Locked (Click to Fix)');
+      setCloudStatus('error_perm', 'Cloud Sync Paused');
       if (sseSource) {
         try { sseSource.close(); } catch(e){}
         sseSource = null;
       }
-      if (!isBackground) showToast("Firebase 401: Click 'Rules Locked' to view 10-sec fix.");
     } else {
       setCloudStatus('offline', 'Offline');
     }
   } catch (err) {
-    setCloudStatus('offline', 'Offline (Using Local)');
+    setCloudStatus('offline', 'Offline');
   }
 }
 
@@ -196,8 +236,9 @@ function initRealtimeListener() {
     try { sseSource.close(); } catch(e){}
     sseSource = null;
   }
+  const endpoint = getFirebaseEndpoint();
+  if (!endpoint.sseUrl) return;
   try {
-    const endpoint = getFirebaseEndpoint();
     sseSource = new EventSource(endpoint.sseUrl);
     sseSource.addEventListener('put', e => {
       try {
@@ -207,10 +248,18 @@ function initRealtimeListener() {
             return;
           }
           const cloudState = parsed.data;
+          const decodedEntries = {};
+          for (let k in (cloudState.entries || {})) {
+            decodedEntries[decodeFirebaseKey(k)] = cloudState.entries[k];
+          }
+          const decodedMomCells = {};
+          for (let k in (cloudState.momCells || {})) {
+            decodedMomCells[decodeFirebaseKey(k)] = cloudState.momCells[k];
+          }
           state = {
             categories: [...new Set([...DEFAULT_CATS, ...(cloudState.categories || [])])],
-            entries: cloudState.entries || {},
-            momCells: cloudState.momCells || {}
+            entries: decodedEntries,
+            momCells: decodedMomCells
           };
           ensureEmptyCustomRow();
           saveLocal();
@@ -219,7 +268,7 @@ function initRealtimeListener() {
         }
       } catch(err){}
     });
-    sseSource.onerror = (err) => {
+    sseSource.onerror = () => {
       if (sseSource) {
         try { sseSource.close(); } catch(e){}
         sseSource = null;
@@ -665,25 +714,39 @@ document.getElementById("grid").addEventListener("change", e => {
     return;
   }
   
-  if(e.target.matches(".amount") || e.target.matches(".mom-check")) {
-    let wrapper = e.target.closest('.cell-wrapper');
-    let amtInput = wrapper.querySelector('.amount');
-    let chkInput = wrapper.querySelector('.mom-check');
-    let k = amtInput.dataset.key;
-    let v = Number(amtInput.value);
-    
-    if(v > 0) {
-      state.entries[k] = v;
-      if(chkInput.checked) state.momCells[k] = true; else delete state.momCells[k];
+  // Independent Mom's Account checkbox toggle - always allows ticking regardless of amount
+  if (e.target.matches(".mom-check")) {
+    let k = e.target.dataset.key;
+    if (e.target.checked) {
+      state.momCells[k] = true;
     } else {
-      delete state.entries[k]; 
       delete state.momCells[k];
-      amtInput.value = ""; 
-      chkInput.checked = false; 
     }
-    ensureEmptyCustomRow(); 
+    let td = e.target.closest("td");
+    if (td) {
+      if (e.target.checked) td.classList.add("mom-active");
+      else td.classList.remove("mom-active");
+    }
+    triggerSave(false);
+    updateMetrics();
+    drawCharts();
+    return;
+  }
+
+  // Amount input change
+  if (e.target.matches(".amount")) {
+    let k = e.target.dataset.key;
+    let v = Number(e.target.value);
+    if (v > 0) {
+      state.entries[k] = v;
+    } else {
+      delete state.entries[k];
+      e.target.value = "";
+    }
+    ensureEmptyCustomRow();
     triggerSave(false);
     render();
+    return;
   }
 });
 
