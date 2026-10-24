@@ -1,0 +1,25 @@
+# Environment and Secret Configurations
+.env
+.env.local
+.env.*.local
+config.js
+
+# Backup JSON files and exported spreadsheets containing personal financial data
+*.backup.json
+chinmay-expense-backup*.json
+chinmay-expenses-*.csv
+*.csv
+
+# Dependency & build directories
+node_modules/
+dist/
+build/
+.cache/
+
+# OS and Editor temporary files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.log
