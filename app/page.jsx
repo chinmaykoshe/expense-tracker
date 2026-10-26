@@ -117,8 +117,9 @@ export default function DashboardPage() {
     });
   }, [showToast]);
 
-  // Search state
+  // Search & Sort state
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("most-used");
 
   const handleLoginSuccess = useCallback(
     (user) => {
@@ -250,6 +251,8 @@ export default function DashboardPage() {
           onClearSearch={() => setSearchQuery("")}
           filteredCount={filteredCount}
           totalCategoriesCount={state.categories.length}
+          sortBy={sortBy}
+          onSortByChange={setSortBy}
         />
 
         <div className="panel">
@@ -276,6 +279,7 @@ export default function DashboardPage() {
             onToggleMomCell={toggleMomCell}
             onRenameCategory={renameCategory}
             searchQuery={searchQuery}
+            sortBy={sortBy}
           />
         </div>
 

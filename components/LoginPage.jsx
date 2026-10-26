@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { authenticateUser, registerUser, getUserCapacity, MAX_ALLOWED_USERS } from "../lib/firebase";
+import { REMEMBER_USER_KEY } from "../lib/constants";
 
 export default function LoginPage({ onLoginSuccess, theme, onToggleTheme }) {
   const [mode, setMode] = useState("signin"); // "signin" | "signup"
@@ -9,6 +10,7 @@ export default function LoginPage({ onLoginSuccess, theme, onToggleTheme }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [capacity, setCapacity] = useState({
@@ -17,6 +19,17 @@ export default function LoginPage({ onLoginSuccess, theme, onToggleTheme }) {
     available: 99,
     isFull: false,
   });
+
+  // Pre-fill remembered username on mount
+  useEffect(() => {
+    try {
+      const savedUsername = localStorage.getItem(REMEMBER_USER_KEY);
+      if (savedUsername) {
+        setUsername(savedUsername);
+        setRememberMe(true);
+      }
+    } catch (e) {}
+  }, []);
 
   // Fetch live capacity from Firebase on mount and on mode change
   useEffect(() => {
@@ -68,6 +81,13 @@ export default function LoginPage({ onLoginSuccess, theme, onToggleTheme }) {
       if (mode === "signin") {
         const result = await authenticateUser(cleanUser, password);
         if (result.success) {
+          try {
+            if (rememberMe) {
+              localStorage.setItem(REMEMBER_USER_KEY, cleanUser);
+            } else {
+              localStorage.removeItem(REMEMBER_USER_KEY);
+            }
+          } catch (e) {}
           onLoginSuccess(result.username);
         } else {
           setErrorMessage(result.message || "Invalid username or password. Please try again.");
@@ -76,6 +96,13 @@ export default function LoginPage({ onLoginSuccess, theme, onToggleTheme }) {
         // Sign Up
         const result = await registerUser(cleanUser, password);
         if (result.success) {
+          try {
+            if (rememberMe) {
+              localStorage.setItem(REMEMBER_USER_KEY, cleanUser);
+            } else {
+              localStorage.removeItem(REMEMBER_USER_KEY);
+            }
+          } catch (e) {}
           onLoginSuccess(result.username);
         } else {
           setErrorMessage(result.message || "Registration failed. Please try again.");
@@ -196,7 +223,7 @@ export default function LoginPage({ onLoginSuccess, theme, onToggleTheme }) {
                 placeholder={mode === "signin" ? "Enter your username" : "Choose a unique username"}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                autoFocus
+                autoFocus={!username}
                 required
                 autoComplete="username"
                 disabled={isLoading}
@@ -255,6 +282,19 @@ export default function LoginPage({ onLoginSuccess, theme, onToggleTheme }) {
               </div>
             </div>
           )}
+
+          <div className="login-options-row">
+            <label className="login-remember-label">
+              <input
+                type="checkbox"
+                className="login-remember-checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                disabled={isLoading}
+              />
+              <span>Remember me</span>
+            </label>
+          </div>
 
           <button
             type="submit"

@@ -17,6 +17,7 @@ export default function ExpenseGrid({
   onToggleMomCell,
   onRenameCategory,
   searchQuery,
+  sortBy = "most-used",
 }) {
   const [activeCellKey, setActiveCellKey] = useState(null);
 
@@ -26,11 +27,73 @@ export default function ExpenseGrid({
     );
   }, [mobileStartIndex, weekDates.length]);
 
+  // Precompute category usage counts and spending sums
+  const categoryStats = useMemo(() => {
+    const counts = {};
+    const sums = {};
+
+    categories.forEach((cat) => {
+      counts[cat] = 0;
+      sums[cat] = 0;
+    });
+
+    Object.entries(entries || {}).forEach(([key, val]) => {
+      const amt = Number(val) || 0;
+      if (amt > 0) {
+        const pipeIdx = key.indexOf("|");
+        if (pipeIdx !== -1) {
+          const cat = key.slice(0, pipeIdx);
+          if (counts[cat] !== undefined) {
+            counts[cat] = (counts[cat] || 0) + 1;
+            sums[cat] = (sums[cat] || 0) + amt;
+          }
+        }
+      }
+    });
+
+    return { counts, sums };
+  }, [categories, entries]);
+
+  const sortedCategories = useMemo(() => {
+    // Keep empty editable trailing "Other" row at the very bottom
+    const isTrailingEmptyOther = (cat, idx) => {
+      return (
+        idx === categories.length - 1 &&
+        cat.startsWith("Other") &&
+        !categoryStats.counts[cat]
+      );
+    };
+
+    const regular = categories.filter((c, idx) => !isTrailingEmptyOther(c, idx));
+    const trailing = categories.filter((c, idx) => isTrailingEmptyOther(c, idx));
+
+    if (sortBy === "most-used") {
+      regular.sort((a, b) => {
+        const countDiff = (categoryStats.counts[b] || 0) - (categoryStats.counts[a] || 0);
+        if (countDiff !== 0) return countDiff;
+        // Secondary sort: highest spending
+        const sumDiff = (categoryStats.sums[b] || 0) - (categoryStats.sums[a] || 0);
+        if (sumDiff !== 0) return sumDiff;
+        return a.localeCompare(b);
+      });
+    } else if (sortBy === "highest-spent") {
+      regular.sort((a, b) => {
+        const sumDiff = (categoryStats.sums[b] || 0) - (categoryStats.sums[a] || 0);
+        if (sumDiff !== 0) return sumDiff;
+        const countDiff = (categoryStats.counts[b] || 0) - (categoryStats.counts[a] || 0);
+        if (countDiff !== 0) return countDiff;
+        return a.localeCompare(b);
+      });
+    }
+
+    return [...regular, ...trailing];
+  }, [categories, categoryStats, sortBy]);
+
   const filteredCategories = useMemo(() => {
-    if (!searchQuery) return categories;
+    if (!searchQuery) return sortedCategories;
     const q = searchQuery.trim().toLowerCase();
-    return categories.filter((c) => c.toLowerCase().includes(q));
-  }, [categories, searchQuery]);
+    return sortedCategories.filter((c) => c.toLowerCase().includes(q));
+  }, [sortedCategories, searchQuery]);
 
   // Excel-like Keyboard Navigation:
   // Enter -> Down, Shift+Enter -> Up

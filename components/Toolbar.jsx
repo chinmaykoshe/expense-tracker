@@ -11,6 +11,8 @@ export default function Toolbar({
   onClearSearch,
   filteredCount,
   totalCategoriesCount,
+  sortBy,
+  onSortByChange,
 }) {
   return (
     <div className="toolbar-panel">
@@ -104,6 +106,21 @@ export default function Toolbar({
               &times;
             </button>
           )}
+        </div>
+
+        <div className="sort-select-wrapper">
+          <label htmlFor="sort-select" className="sort-label">Sort:</label>
+          <select
+            id="sort-select"
+            className="sort-select"
+            value={sortBy}
+            onChange={(e) => onSortByChange(e.target.value)}
+            title="Sort categories by activity or spending"
+          >
+            <option value="most-used">🔥 Most Used</option>
+            <option value="highest-spent">💰 Highest Spent</option>
+            <option value="default">📋 Default Order</option>
+          </select>
         </div>
 
         <div className="cat-count-pill">

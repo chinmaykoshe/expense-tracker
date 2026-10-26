@@ -629,6 +629,49 @@ main {
   white-space: nowrap;
 }
 
+.sort-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 3px 10px 3px 12px;
+  transition: all 0.2s ease;
+}
+
+.sort-select-wrapper:hover,
+.sort-select-wrapper:focus-within {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.sort-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+.sort-select {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  padding: 3px 0;
+}
+
+.sort-select option {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
 /* ============================================================
    WEEK TABLE PANEL
    ============================================================ */
@@ -1532,6 +1575,35 @@ body.dark .login-error-banner {
 
 .login-toggle-pw:hover {
   opacity: 1;
+}
+
+.login-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -4px;
+}
+
+.login-remember-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.login-remember-label:hover {
+  color: var(--text-main);
+}
+
+.login-remember-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+  border-radius: 4px;
 }
 
 .login-submit-btn {
