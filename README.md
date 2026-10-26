@@ -1,37 +1,45 @@
-# 💸 Chinmay's Expense Tracker
+# 💸 Chinmay's Expense Tracker (Next.js Edition)
 
-A modern, high-performance, responsive expense tracker with real-time Firebase cloud synchronization, multi-account tagging (Personal & Mom's Account), salary cycle budgeting (7th to 6th), and SaaS design aesthetics.
+A modern, high-performance, responsive expense tracker built with **Next.js 14 (App Router)**, **React 18**, and **Vanilla CSS**. Features real-time Firebase cloud synchronization, multi-account tagging (Personal & Mom's Account), salary cycle budgeting (7th to 6th), and rich SaaS aesthetics.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Vanilla JS](https://img.shields.io/badge/JavaScript-Vanilla%20ES6+-yellow.svg)
-![CSS3](https://img.shields.io/badge/CSS3-Modern%20Custom%20Properties-blue.svg)
-![Firebase](https://img.shields.io/badge/Firebase-Realtime%20Database-orange.svg)
+![Next.js](https://img.shields.io/badge/Next.js-14.2-black.svg?logo=next.js)
+![React](https://img.shields.io/badge/React-18-blue.svg?logo=react)
+![CSS3](https://img.shields.io/badge/CSS3-Modern%20Design%20Tokens-blue.svg)
+![Firebase](https://img.shields.io/badge/Firebase-Realtime%20Database-orange.svg?logo=firebase)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 ---
 
 ## ✨ Features
 
+- **Next.js App Router Architecture**:
+  - Organized modular component structure (`app/`, `components/`, `hooks/`, `lib/`).
+  - Google Fonts (`Outfit` & `Inter`) with zero-layout-shift `next/font`.
+  - Zero Tailwind dependency — powered by custom Vanilla CSS design system.
 - **Top Navigation Bar with Live Stats**:
   - `Total (Cycle)`: Cumulative spending across the salary cycle.
-  - `Displayed Week`: Instant weekly totals.
+  - `Displayed Week`: Instant weekly totals for the visible week.
   - `Mom's Account`: Tagged expenses with soft rose indicator.
   - `My Account`: Dedicated personal spending tracker.
 - **Real-Time Cloud Synchronization**:
-  - Connects to **Firebase Realtime Database** via direct REST & Server-Sent Events (SSE).
-  - Multi-tab and multi-device live sync.
-  - Local-first architecture: edits save instantly offline to `localStorage` and automatically sync to the cloud.
+  - Connects to **Firebase Realtime Database** via direct REST and Server-Sent Events (SSE).
+  - Multi-tab and multi-device live synchronization.
+  - Local-first architecture: edits save instantly offline to `localStorage` and automatically sync to the cloud with debouncing.
+  - Custom Settings modal for runtime Firebase URL configuration.
 - **Salary Cycle Budgeting**:
-  - Custom pay-cycle tracking (e.g. 7th of current month to 6th of next month).
+  - Custom pay-cycle tracking (7th of current month to 6th of next month).
   - Quick month-switcher navigation (`<` and `>`).
   - Active cycle date range badge.
 - **Interactive Expense Matrix**:
-  - Inline category renaming and custom category addition.
-  - Current day column glowing highlight (`TODAY`).
-  - Enter key navigation across amount inputs.
+  - Week-by-week pagination with "Today" quick jump.
+  - Glowing highlight on the current day column (`TODAY`).
+  - Inline category renaming and automatic "Other" row appending.
+  - Smooth Enter-key navigation between amount inputs.
   - Real-time search filter with category counter.
+  - Mobile-responsive 3-day sliding window for touch devices.
 - **Visual Analytics**:
-  - Interactive Doughnut chart for category breakdown.
-  - Daily spending trend bar chart with Rupee (`₹`) tooltips.
+  - Category breakdown **Doughnut Chart** with responsive legends.
+  - Daily spending trend **Bar Chart** with Rupee (`₹`) tooltips.
 - **Theming & Data Management**:
   - Dark Mode (Deep Zinc / Slate) & Light Mode with persistent preference.
   - One-click CSV spreadsheet export.
@@ -39,39 +47,81 @@ A modern, high-performance, responsive expense tracker with real-time Firebase c
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
-### 1. Clone the repository
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v18.17.0 or later recommended; Node 20 verified).
+- `npm` (v9 or later).
+
+### 1. Installation
+Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/chinmaykoshe/expense-tracker.git
-cd expense-tracker
+cd "expense tracker"
+npm install
 ```
 
-### 2. Configure Firebase (Optional but Recommended)
-Copy `config.example.js` to `config.js`:
+### 2. Configure Firebase (Optional)
+Copy `.env.example` to `.env.local`:
 ```bash
-cp config.example.js config.js
+cp .env.example .env.local
 ```
-Open `config.js` and set your Firebase Realtime Database URL:
-```javascript
-window.APP_CONFIG = {
-  FIREBASE_DATABASE_URL: "https://your-project-id-default-rtdb.firebaseio.com",
-  FIREBASE_NODE: "expenseTracker",
-  DATABASE_SECRET: "" // Optional
-};
+Update your Firebase configuration in `.env.local`:
+```env
+NEXT_PUBLIC_FIREBASE_DATABASE_URL="https://your-project-id-default-rtdb.firebaseio.com"
+NEXT_PUBLIC_FIREBASE_NODE="expenseTracker"
+NEXT_PUBLIC_DATABASE_SECRET="" # Optional if public rules allow read/write
 ```
-*(Note: `config.js` is included in `.gitignore` to prevent leaking your private database URL or secrets.)*
+*(Note: You can also configure or change the Firebase Database URL directly in the app via the **Settings (⚙️)** modal without modifying files).*
 
-### 3. Open in Browser
-Simply open `index.html` in any modern web browser (Edge, Chrome, Firefox, Safari).
+### 3. Run Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### 4. Build for Production
+To create an optimized production build:
+```bash
+npm run build
+npm run start
+```
+
+---
+
+## 📁 Project Structure
+
+```
+├── app/
+│   ├── globals.css          # Vanilla CSS design system tokens and styles
+│   ├── layout.jsx           # Root layout with fonts, metadata, and viewport
+│   └── page.jsx             # Client dashboard orchestrator
+├── components/
+│   ├── Header.jsx           # Navigation bar with 4 metric cards and actions
+│   ├── Toolbar.jsx          # Month picker, cycle range badge, and search
+│   ├── WeekNav.jsx          # Week pagination and "Today" button
+│   ├── ExpenseGrid.jsx      # Interactive table matrix with inline editing
+│   ├── ChartsSection.jsx    # Chart.js Doughnut and Bar visualizations
+│   ├── MobileSidebar.jsx    # Slide-out drawer for mobile devices
+│   ├── Toast.jsx            # Toast feedback notifications
+├── hooks/
+│   ├── useExpenseState.js   # Local-first state, debounced sync, and SSE listener
+│   └── useSalaryCycle.js    # 7th-to-6th cycle calculation and week pagination
+├── lib/
+│   ├── constants.js         # Default categories, storage keys, and config
+│   ├── dateUtils.js         # Date formatting, cycle logic, and Rupee money helper
+│   ├── exportUtils.js       # CSV export and JSON backup/restore
+│   └── firebase.js          # REST and SSE Firebase communication
+├── package.json
+└── next.config.mjs
+```
 
 ---
 
 ## 🔒 Security & Privacy
 
-This project follows security best practices:
-- Credentials in `config.js` and `.env` are protected by `.gitignore` and are never committed to public repositories.
-- Client-side data is cached locally with seamless fallback if offline or unreachable.
+- Environment variables in `.env.local` and `.env` are protected by `.gitignore` and are never committed to public repositories.
+- Client-side data is persisted locally in `localStorage` with offline-first support if Firebase is unreachable.
 
 ---
 

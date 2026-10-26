@@ -1,5 +1,6 @@
 # Environment and Secret Configurations
 .env
+.env*
 .env.local
 .env.*.local
 config.js
@@ -14,6 +15,8 @@ chinmay-expenses-*.csv
 node_modules/
 dist/
 build/
+.next/
+out/
 .cache/
 
 # OS and Editor temporary files
